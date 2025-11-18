@@ -1,7 +1,13 @@
 from typing import Optional, Dict
 from services.supabase_service import get_supabase_client, get_supabase_service
-from gotrue.errors import AuthApiError
 import os
+
+# gotrue will be imported via supabase client when needed
+try:
+    from gotrue.errors import AuthApiError
+except ImportError:
+    # Fallback if gotrue is not directly available
+    AuthApiError = Exception
 
 class AuthService:
     @staticmethod
