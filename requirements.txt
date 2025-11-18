@@ -18,4 +18,3 @@ resend>=0.8.0
 stripe>=7.0.0
 paypalrestsdk>=1.13.1
 httpx>=0.26,<0.29
-
