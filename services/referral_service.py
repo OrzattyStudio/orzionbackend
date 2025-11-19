@@ -213,8 +213,11 @@ class ReferralService:
         correlation_id = SecurityLogger.generate_correlation_id()
         
         try:
+            print(f"[REFERRAL-SERVICE] 🎁 Starting redemption for user {referred_user_id}, code: {referral_code}")
+            
             supabase = get_supabase_service()
             if not supabase:
+                print(f"[REFERRAL-SERVICE] ❌ Supabase unavailable")
                 return {
                     "success": False,
                     "message": "Referral system temporarily unavailable",
@@ -222,8 +225,10 @@ class ReferralService:
                 }
             
             # 1. Validate referral code exists
+            print(f"[REFERRAL-SERVICE] 🔍 Validating referral code...")
             referrer = await ReferralService.validate_referral_code(referral_code)
             if not referrer:
+                print(f"[REFERRAL-SERVICE] ❌ Invalid referral code: {referral_code}")
                 return {
                     "success": False,
                     "message": "Invalid referral code",
@@ -231,9 +236,11 @@ class ReferralService:
                 }
             
             referrer_id = referrer['user_id']
+            print(f"[REFERRAL-SERVICE] ✅ Valid code! Referrer ID: {referrer_id}")
             
             # 2. Prevent self-referral
             if referrer_id == referred_user_id:
+                print(f"[REFERRAL-SERVICE] ❌ Self-referral attempt detected")
                 SecurityLogger.log_security_event(
                     event_type="SELF_REFERRAL_ATTEMPT",
                     user_id=referred_user_id,
@@ -248,7 +255,9 @@ class ReferralService:
             
             # 3. Check if user is new (account created within last 24 hours)
             account_age = datetime.utcnow() - user_created_at
+            print(f"[REFERRAL-SERVICE] ⏰ Account age: {account_age} (limit: 24h)")
             if account_age > timedelta(hours=24):
+                print(f"[REFERRAL-SERVICE] ❌ Account too old: {account_age}")
                 return {
                     "success": False,
                     "message": "Referral codes can only be used within 24 hours of account creation",
@@ -256,6 +265,7 @@ class ReferralService:
                 }
             
             # 4. Check if this user has already used a referral code
+            print(f"[REFERRAL-SERVICE] 🔍 Checking for existing referrals...")
             existing_referral = supabase.table('referral_events')\
                 .select('*')\
                 .eq('referred_id', referred_user_id)\
@@ -263,6 +273,7 @@ class ReferralService:
                 .execute()
             
             if existing_referral.data and len(existing_referral.data) > 0:
+                print(f"[REFERRAL-SERVICE] ❌ User already used a referral code")
                 return {
                     "success": False,
                     "message": "You have already used a referral code",
@@ -270,9 +281,11 @@ class ReferralService:
                 }
             
             # 5. Check IP anti-abuse
+            print(f"[REFERRAL-SERVICE] 🔍 Checking IP anti-abuse (IP: {ip_address})...")
             ip_already_used = await ReferralService.check_ip_already_used(ip_address)
             if ip_already_used:
                 ip_hash = ReferralService._hash_ip(ip_address)
+                print(f"[REFERRAL-SERVICE] ❌ IP already used for referral")
                 
                 # Log this as potential abuse
                 SecurityLogger.log_security_event(
@@ -299,9 +312,11 @@ class ReferralService:
                 }
             
             # 6. All checks passed - process the referral
+            print(f"[REFERRAL-SERVICE] ✅ All checks passed! Processing referral...")
             ip_hash = ReferralService._hash_ip(ip_address)
             
             # Create approved referral event
+            print(f"[REFERRAL-SERVICE] 📝 Creating referral event in database...")
             supabase.table('referral_events').insert({
                 "referrer_id": referrer_id,
                 "referred_id": referred_user_id,
@@ -309,6 +324,7 @@ class ReferralService:
                 "referral_ip_hash": ip_hash,
                 "status": "approved"
             }).execute()
+            print(f"[REFERRAL-SERVICE] ✅ Referral event created")
             
             # Add IP to blocklist
             supabase.table('ip_referral_blocklist').insert({

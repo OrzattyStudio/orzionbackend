@@ -56,18 +56,25 @@ async def redeem_referral_code(
     """
     try:
         user_id = current_user["id"]
+        print(f"[REFERRAL-REDEEM] 🎁 User {user_id} attempting to redeem code: {body.referral_code}")
         
         # Get user's IP address
         client_ip = request.client.host if request.client else "0.0.0.0"
+        print(f"[REFERRAL-REDEEM] 📍 Client IP: {client_ip}")
         
         # Get user creation timestamp from Supabase
         # Note: current_user should include created_at from the JWT or we fetch it
         user_created_at = current_user.get("created_at")
         if not user_created_at:
             # Fallback: assume account is fresh (within 24h)
+            print(f"[REFERRAL-REDEEM] ⚠️ No created_at in JWT, assuming fresh account")
             user_created_at = datetime.utcnow()
         elif isinstance(user_created_at, str):
             user_created_at = datetime.fromisoformat(user_created_at.replace('Z', '+00:00'))
+            print(f"[REFERRAL-REDEEM] 📅 Account created at: {user_created_at}")
+        
+        account_age = datetime.utcnow() - user_created_at
+        print(f"[REFERRAL-REDEEM] ⏰ Account age: {account_age} (limit: 24h)")
         
         # Redeem the referral code
         result = await ReferralService.redeem_referral_code(
@@ -78,12 +85,14 @@ async def redeem_referral_code(
         )
         
         if result["success"]:
+            print(f"[REFERRAL-REDEEM] ✅ Redemption successful!")
             return {
                 "success": True,
                 "message": result["message"],
                 "bonus_applied": result["bonus_applied"]
             }
         else:
+            print(f"[REFERRAL-REDEEM] ❌ Redemption failed: {result['message']}")
             return {
                 "success": False,
                 "message": result["message"],
@@ -91,6 +100,9 @@ async def redeem_referral_code(
             }
         
     except Exception as e:
+        print(f"[REFERRAL-REDEEM] ❌ Exception: {str(e)}")
+        import traceback
+        traceback.print_exc()
         SecurityLogger.log_api_error(
             api_name="POST /api/referrals/redeem",
             error_message=str(e),
