@@ -79,7 +79,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com https://unpkg.com; "
             "font-src 'self' https://fonts.gstatic.com; "
             "img-src 'self' data: https: blob:; "
-            "connect-src 'self' https://orzionbackend.onrender.com https://orzion-pro.pages.dev https://accounts.google.com https://*.openrouter.ai https://www.googleapis.com https://unpkg.com; "
+            "connect-src 'self' https://orzionbackend.onrender.com https://orzion-pro.pages.dev https://*.replit.dev https://accounts.google.com https://*.openrouter.ai https://www.googleapis.com https://unpkg.com; "
             "frame-src 'self' https://accounts.google.com; "
             "object-src 'none'; "
             "base-uri 'self'; "
@@ -129,6 +129,12 @@ for origin in production_origins:
     if origin not in allowed_origins:
         allowed_origins.append(origin)
 
+# Add Replit dev domains (wildcards for development)
+import re
+replit_dev_pattern = re.compile(r'https://[a-f0-9-]+\.replit\.dev')
+# Note: CORS doesn't support wildcards, so we'll handle this in the CORS middleware
+# by checking the origin pattern at runtime
+
 # Add localhost for development
 if not allowed_origins or os.getenv("ENVIRONMENT") == "development":
     allowed_origins.extend([
@@ -137,8 +143,20 @@ if not allowed_origins or os.getenv("ENVIRONMENT") == "development":
         "http://0.0.0.0:5000",
     ])
 
+# Custom CORS middleware to handle Replit dev domains
+from starlette.middleware.cors import CORSMiddleware as _CORSMiddleware
+from starlette.datastructures import Headers
+
+class CustomCORSMiddleware(_CORSMiddleware):
+    def is_allowed_origin(self, origin: str) -> bool:
+        # Check if it's a Replit dev domain
+        if re.match(r'https://[a-f0-9-]+\.replit\.dev', origin):
+            return True
+        # Otherwise use the default logic
+        return super().is_allowed_origin(origin)
+
 app.add_middleware(
-    CORSMiddleware,
+    CustomCORSMiddleware,
     allow_origins=allowed_origins if allowed_origins else ["*"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
