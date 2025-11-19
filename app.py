@@ -1,10 +1,15 @@
+import sys
+import os
+print(f"Python version: {sys.version}")
+print(f"Current working directory: {os.getcwd()}")
+print(f"Python path: {sys.path}")
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from contextlib import asynccontextmanager
-import os
 from pathlib import Path
 from datetime import datetime
 from routes import (
@@ -74,7 +79,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com https://unpkg.com; "
             "font-src 'self' https://fonts.gstatic.com; "
             "img-src 'self' data: https: blob:; "
-            "connect-src 'self' https://accounts.google.com https://*.openrouter.ai https://www.googleapis.com https://unpkg.com; "
+            "connect-src 'self' https://orzionbackend.onrender.com https://orzion-pro.pages.dev https://accounts.google.com https://*.openrouter.ai https://www.googleapis.com https://unpkg.com; "
             "frame-src 'self' https://accounts.google.com; "
             "object-src 'none'; "
             "base-uri 'self'; "
@@ -112,6 +117,17 @@ if replit_dev_domain and replit_owner:
     replit_url = f"https://{replit_dev_domain}.{replit_owner}.repl.co"
     if replit_url not in allowed_origins:
         allowed_origins.append(replit_url)
+
+# Add production frontend URLs
+production_origins = [
+    "https://orzion.com",
+    "https://www.orzion.com",
+    "https://orzionbackend.onrender.com",
+    "https://orzion-pro.pages.dev",
+]
+for origin in production_origins:
+    if origin not in allowed_origins:
+        allowed_origins.append(origin)
 
 # Add localhost for development
 if not allowed_origins or os.getenv("ENVIRONMENT") == "development":
