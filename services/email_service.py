@@ -1,7 +1,3 @@
-
-"""
-Email Service - Email verification and password reset using Resend
-"""
 import resend
 import secrets
 from datetime import datetime, timedelta
@@ -325,7 +321,7 @@ class EmailService:
             
             # Send email
             params = {
-                "from": "Orzion AI <noreply@orzionai.com>",
+                "from": "Orzion AI <onboarding@resend.dev>",
                 "to": [email],
                 "subject": "Verifica tu correo electrónico - Orzion AI",
                 "html": EmailTemplates.verification_email(verification_url, user_name)
@@ -441,7 +437,7 @@ class EmailService:
             
             # Send email
             params = {
-                "from": "Orzion AI <noreply@orzionai.com>",
+                "from": "Orzion AI <onboarding@resend.dev>",
                 "to": [email],
                 "subject": "Restablece tu contraseña - Orzion AI",
                 "html": EmailTemplates.password_reset_email(reset_url, user_name)
@@ -548,7 +544,7 @@ class EmailService:
             
             # Send email
             params = {
-                "from": "Orzion AI <noreply@orzionai.com>",
+                "from": "Orzion AI <onboarding@resend.dev>",
                 "to": [email],
                 "subject": "Accede a tu cuenta - Orzion AI",
                 "html": EmailTemplates.magic_link_email(magic_url, user_name)
@@ -598,7 +594,7 @@ class EmailService:
             
             # Send email
             params = {
-                "from": "Orzion AI <noreply@orzionai.com>",
+                "from": "Orzion AI <onboarding@resend.dev>",
                 "to": [email],
                 "subject": "Confirmación de seguridad requerida - Orzion AI",
                 "html": EmailTemplates.reauthentication_email(reauth_url, user_name, ip_address)
@@ -631,7 +627,7 @@ class EmailService:
         
         try:
             params = {
-                "from": "Orzion AI <noreply@orzionai.com>",
+                "from": "Orzion AI <onboarding@resend.dev>",
                 "to": [email],
                 "subject": "¡Bienvenido a Orzion AI! 🎊",
                 "html": EmailTemplates.welcome_email(user_name)
