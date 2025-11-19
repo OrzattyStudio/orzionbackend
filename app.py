@@ -131,6 +131,7 @@ production_origins = [
     "https://www.orzion.com",
     "https://orzionbackend.onrender.com",
     "https://orzion-pro.pages.dev",
+    "https://orzion.pages.dev",
 ]
 for origin in production_origins:
     if origin not in allowed_origins:
