@@ -169,8 +169,8 @@ app.add_middleware(
     allow_origins=allowed_origins if allowed_origins else ["*"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Cookie"],
-    expose_headers=["Content-Type", "Set-Cookie"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Cookie", "Set-Cookie"],
+    expose_headers=["Content-Type", "Set-Cookie", "Access-Control-Allow-Credentials"],
     max_age=3600,
 )
 
