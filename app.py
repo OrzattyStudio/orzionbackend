@@ -114,9 +114,16 @@ allowed_origins = os.getenv("ALLOWED_ORIGINS", "").split(",") if os.getenv("ALLO
 replit_dev_domain = os.getenv("REPL_SLUG")
 replit_owner = os.getenv("REPL_OWNER")
 if replit_dev_domain and replit_owner:
-    replit_url = f"https://{replit_dev_domain}.{replit_owner}.repl.co"
-    if replit_url not in allowed_origins:
-        allowed_origins.append(replit_url)
+    # Agregar ambos formatos de URL de Replit
+    replit_url_repl = f"https://{replit_dev_domain}.{replit_owner}.repl.co"
+    replit_url_dev = f"https://{replit_dev_domain}-{replit_owner}.replit.dev"
+    
+    if replit_url_repl not in allowed_origins:
+        allowed_origins.append(replit_url_repl)
+    if replit_url_dev not in allowed_origins:
+        allowed_origins.append(replit_url_dev)
+    
+    print(f"✅ Replit domains added to CORS: {replit_url_repl}, {replit_url_dev}")
 
 # Add production frontend URLs
 production_origins = [
@@ -129,11 +136,9 @@ for origin in production_origins:
     if origin not in allowed_origins:
         allowed_origins.append(origin)
 
-# Add Replit dev domains (wildcards for development)
+# Add Replit dev domains pattern
 import re
-replit_dev_pattern = re.compile(r'https://[a-f0-9-]+\.replit\.dev')
-# Note: CORS doesn't support wildcards, so we'll handle this in the CORS middleware
-# by checking the origin pattern at runtime
+replit_dev_pattern = re.compile(r'https://[a-zA-Z0-9-]+\.replit\.dev')
 
 # Add localhost for development
 if not allowed_origins or os.getenv("ENVIRONMENT") == "development":
@@ -149,8 +154,11 @@ from starlette.datastructures import Headers
 
 class CustomCORSMiddleware(_CORSMiddleware):
     def is_allowed_origin(self, origin: str) -> bool:
-        # Check if it's a Replit dev domain
-        if re.match(r'https://[a-f0-9-]+\.replit\.dev', origin):
+        # Check if it's a Replit dev domain (any formato)
+        if re.match(r'https://[a-zA-Z0-9-]+\.replit\.dev', origin):
+            return True
+        # Check if it's a Replit repl.co domain
+        if re.match(r'https://[a-zA-Z0-9-]+\.[a-zA-Z0-9-]+\.repl\.co', origin):
             return True
         # Otherwise use the default logic
         return super().is_allowed_origin(origin)
@@ -160,8 +168,8 @@ app.add_middleware(
     allow_origins=allowed_origins if allowed_origins else ["*"],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
-    expose_headers=["Content-Type"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Cookie"],
+    expose_headers=["Content-Type", "Set-Cookie"],
     max_age=3600,
 )
 
