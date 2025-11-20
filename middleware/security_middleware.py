@@ -94,6 +94,7 @@ class SecurityMiddleware:
     ) -> tuple[bool, Optional[str]]:
         """
         Check if user has exceeded rate limit for a specific model.
+        STRICT SECURITY: New accounts (< 24h) have reduced limits.
 
         Args:
             user_id: User ID (UUID string)
@@ -107,6 +108,24 @@ class SecurityMiddleware:
         try:
             supabase = get_supabase_service()
             now = datetime.utcnow().isoformat()
+
+            # STRICT SECURITY: Check if account is new (< 24 hours)
+            try:
+                user_response = supabase.table('user_settings')\
+                    .select('created_at')\
+                    .eq('user_id', user_id)\
+                    .execute()
+                
+                if user_response.data and len(user_response.data) > 0:
+                    created_at = datetime.fromisoformat(user_response.data[0]['created_at'].replace('Z', '+00:00'))
+                    account_age_hours = (datetime.utcnow() - created_at.replace(tzinfo=None)).total_seconds() / 3600
+                    
+                    # New accounts get 50% reduced limits for first 24 hours
+                    if account_age_hours < 24:
+                        max_requests = max(1, int(max_requests * 0.5))
+                        print(f"🔒 SECURITY: New account detected ({account_age_hours:.1f}h old), reduced limit to {max_requests}")
+            except Exception as age_check_error:
+                print(f"⚠️ Could not check account age: {age_check_error}")
 
             # Get current rate limit record that hasn't expired
             response = supabase.table('rate_limits')\
@@ -150,6 +169,41 @@ class SecurityMiddleware:
         except Exception as e:
             print(f"⚠️ Rate limit check failed (non-critical): {e}")
             # Allow request on error to avoid blocking users
+            return True, None
+    
+    @staticmethod
+    async def check_suspicious_activity(user_id: str, ip_address: str) -> tuple[bool, Optional[str]]:
+        """
+        STRICT SECURITY: Check for suspicious account activity.
+        
+        Args:
+            user_id: User ID to check
+            ip_address: Current IP address
+            
+        Returns:
+            Tuple of (is_safe, warning_message)
+        """
+        try:
+            supabase = get_supabase_service()
+            
+            # Check for multiple registrations from same IP in last hour
+            one_hour_ago = (datetime.utcnow() - timedelta(hours=1)).isoformat()
+            
+            ip_registrations = supabase.table('audit_logs')\
+                .select('*')\
+                .eq('action', 'user_register')\
+                .eq('ip_address', ip_address)\
+                .gte('created_at', one_hour_ago)\
+                .execute()
+            
+            if ip_registrations.data and len(ip_registrations.data) > 3:
+                print(f"⚠️ SECURITY ALERT: Multiple registrations from IP {ip_address}")
+                return False, "Too many accounts created from this IP. Please try again later."
+            
+            return True, None
+            
+        except Exception as e:
+            print(f"⚠️ Suspicious activity check failed: {e}")
             return True, None
 
     @staticmethod

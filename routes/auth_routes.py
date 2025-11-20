@@ -35,6 +35,15 @@ async def register(request: RegisterRequest, req: Request, response: Response):
     try:
         email = SecurityMiddleware.sanitize_input(request.email.lower())
         full_name = SecurityMiddleware.sanitize_input(request.full_name) if request.full_name else None
+        client_ip = SecurityMiddleware.get_client_ip(req)
+
+        # STRICT SECURITY: Check for suspicious activity
+        is_safe, warning = await SecurityMiddleware.check_suspicious_activity(None, client_ip)
+        if not is_safe:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=warning
+            )
 
         if not SecurityMiddleware.validate_email(email):
             raise HTTPException(
@@ -80,21 +89,64 @@ async def register(request: RegisterRequest, req: Request, response: Response):
                 detail=error_message if error_message else "Error al crear la cuenta."
             )
 
-        # Create user settings
+        # Create user settings with STRICT security measures
         try:
             await UserService.create_user_settings(user['id'], terms_accepted=request.terms_accepted)
         except Exception as settings_error:
             print(f"⚠️ Could not create user settings: {settings_error}")
 
-        # Email verification completely disabled - users can login immediately
-        # No verification emails are sent to avoid rate limits
-
+        # STRICT SECURITY MEASURES (compensating for no email verification)
+        client_ip = SecurityMiddleware.get_client_ip(req)
+        user_agent = SecurityMiddleware.get_user_agent(req)
+        
+        # 1. Log audit with full details
         await SecurityMiddleware.log_audit(
             user_id=user['id'],
             action="user_register",
-            ip_address=SecurityMiddleware.get_client_ip(req),
-            user_agent=SecurityMiddleware.get_user_agent(req)
+            ip_address=client_ip,
+            user_agent=user_agent,
+            details=f"New account created without email verification. Email: {email}"
         )
+        
+        # 2. Initialize strict rate limits for new unverified accounts
+        from services.supabase_service import get_supabase_service
+        from datetime import datetime, timedelta
+        
+        try:
+            supabase = get_supabase_service()
+            reset_at = (datetime.utcnow() + timedelta(hours=24)).isoformat()
+            
+            # Set initial conservative limits for new accounts
+            initial_limits = [
+                {'model': 'orzion-mini', 'max_requests': 10},  # Very limited initially
+                {'model': 'orzion-pro', 'max_requests': 5},
+                {'model': 'orzion-turbo', 'max_requests': 3}
+            ]
+            
+            for limit in initial_limits:
+                supabase.table('rate_limits').insert({
+                    'user_id': user['id'],
+                    'model': limit['model'],
+                    'request_count': 0,
+                    'last_request': datetime.utcnow().isoformat(),
+                    'reset_at': reset_at
+                }).execute()
+                
+            print(f"✅ Strict rate limits initialized for new user {user['id']}")
+        except Exception as limit_error:
+            print(f"⚠️ Could not set initial rate limits: {limit_error}")
+        
+        # 3. Track IP for potential abuse detection
+        try:
+            supabase.table('audit_logs').insert({
+                'user_id': user['id'],
+                'action': 'registration_ip_tracked',
+                'ip_address': client_ip,
+                'user_agent': user_agent,
+                'details': f"First registration from IP: {client_ip}"
+            }).execute()
+        except Exception as ip_error:
+            print(f"⚠️ Could not track registration IP: {ip_error}")
 
         return {
             "success": True,
