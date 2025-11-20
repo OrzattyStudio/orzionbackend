@@ -32,24 +32,24 @@ class Config:
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_SAMESITE = "Lax"
 
-    # LLM Model Configuration
+    # LLM Model Configuration - NO DEFAULTS, must be set in Secrets
     ORZION_PRO_URL = os.getenv("ORZION_PRO_URL", "https://openrouter.ai/api/v1/chat/completions")
     ORZION_PRO_KEY = os.getenv("ORZION_PRO_KEY", "")
-    ORZION_PRO_MODEL = os.getenv('ORZION_PRO_MODEL', 'deepseek/deepseek-r1:free')
+    ORZION_PRO_MODEL = os.getenv('ORZION_PRO_MODEL', '')
 
     # Special Models - NO hardcoded keys
-    MODEL_RESEARCH = os.getenv("MODEL_RESEARCH", "google/gemini-2.0-flash-exp:free")
+    MODEL_RESEARCH = os.getenv("MODEL_RESEARCH", "")
     MODEL_RESEARCH_KEY = os.getenv("MODEL_RESEARCH_KEY", "")
 
     ORZION_TURBO_URL = os.getenv("ORZION_TURBO_URL", "https://openrouter.ai/api/v1/chat/completions")
     ORZION_TURBO_KEY = os.getenv("ORZION_TURBO_KEY", "")
-    ORZION_TURBO_MODEL = os.getenv("ORZION_TURBO_MODEL", "kwaipilot/kat-coder-pro:free")
-    ORZION_TURBO_MODEL_SECONDARY = os.getenv("ORZION_TURBO_MODEL_SECONDARY", "kwaipilot/kat-coder-pro:free")
+    ORZION_TURBO_MODEL = os.getenv("ORZION_TURBO_MODEL", "")
+    ORZION_TURBO_MODEL_SECONDARY = os.getenv("ORZION_TURBO_MODEL_SECONDARY", "")
 
     ORZION_MINI_URL = os.getenv("ORZION_MINI_URL", "https://openrouter.ai/api/v1/chat/completions")
     ORZION_MINI_KEY = os.getenv("ORZION_MINI_KEY", "")
-    ORZION_MINI_MODEL = os.getenv("ORZION_MINI_MODEL", "openai/gpt-oss-20b:free")
-    ORZION_MINI_MODEL_SECONDARY = os.getenv("ORZION_MINI_MODEL_SECONDARY", "openai/gpt-oss-20b:free")
+    ORZION_MINI_MODEL = os.getenv("ORZION_MINI_MODEL", "")
+    ORZION_MINI_MODEL_SECONDARY = os.getenv("ORZION_MINI_MODEL_SECONDARY", "")
 
     GOOGLE_GEMINI_URL = os.getenv("GOOGLE_GEMINI_URL", "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent")
     GOOGLE_GEMINI_KEY = os.getenv("GOOGLE_GEMINI_KEY", "")
