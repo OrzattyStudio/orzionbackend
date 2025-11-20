@@ -4,7 +4,7 @@ Referral Service - Handles referral code generation, redemption, and IP-based an
 import hashlib
 import hmac
 from typing import Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from services.supabase_service import get_supabase_service
 from config import config
 from services.security_logger import SecurityLogger
@@ -186,7 +186,7 @@ class ReferralService:
             response = supabase.table('ip_referral_blocklist')\
                 .select('*')\
                 .eq('ip_hash', ip_hash)\
-                .gte('expires_at', datetime.utcnow().isoformat())\
+                .gte('expires_at', datetime.now(timezone.utc).isoformat())\
                 .execute()
             
             return bool(response.data and len(response.data) > 0)
@@ -254,7 +254,7 @@ class ReferralService:
                 }
             
             # 3. Check if user is new (account created within last 24 hours)
-            account_age = datetime.utcnow() - user_created_at
+            account_age = datetime.now(timezone.utc) - user_created_at
             print(f"[REFERRAL-SERVICE] ⏰ Account age: {account_age} (limit: 24h)")
             if account_age > timedelta(hours=24):
                 print(f"[REFERRAL-SERVICE] ❌ Account too old: {account_age}")
@@ -330,8 +330,8 @@ class ReferralService:
             supabase.table('ip_referral_blocklist').insert({
                 "ip_hash": ip_hash,
                 "referral_count": 1,
-                "last_referral_at": datetime.utcnow().isoformat(),
-                "expires_at": (datetime.utcnow() + timedelta(days=30)).isoformat()
+                "last_referral_at": datetime.now(timezone.utc).isoformat(),
+                "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
             }).execute()
             
             # Apply bonus to referrer (double their limits for backward compatibility)

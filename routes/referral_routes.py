@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from middleware.auth_middleware import AuthMiddleware
 from services.referral_service import ReferralService
 from services.security_logger import SecurityLogger
-from datetime import datetime
+from datetime import datetime, timezone
 
 router = APIRouter(prefix="/api/referrals", tags=["Referrals"])
 
@@ -68,12 +68,12 @@ async def redeem_referral_code(
         if not user_created_at:
             # Fallback: assume account is fresh (within 24h)
             print(f"[REFERRAL-REDEEM] ⚠️ No created_at in JWT, assuming fresh account")
-            user_created_at = datetime.utcnow()
+            user_created_at = datetime.now(timezone.utc)
         elif isinstance(user_created_at, str):
             user_created_at = datetime.fromisoformat(user_created_at.replace('Z', '+00:00'))
             print(f"[REFERRAL-REDEEM] 📅 Account created at: {user_created_at}")
         
-        account_age = datetime.utcnow() - user_created_at
+        account_age = datetime.now(timezone.utc) - user_created_at
         print(f"[REFERRAL-REDEEM] ⏰ Account age: {account_age} (limit: 24h)")
         
         # Redeem the referral code
