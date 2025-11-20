@@ -1,3 +1,6 @@
+"""
+Feedback Routes - API endpoints for user feedback
+"""
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from datetime import datetime
@@ -57,14 +60,11 @@ async def submit_feedback(
             correlation_id=SecurityLogger.generate_correlation_id()
         )
 
-        # Return success response
-        return JSONResponse(
-            status_code=200,
-            content={
-                "success": True,
-                "message": "¡Gracias por tu feedback! Lo apreciamos mucho."
-            }
-        )
+        # Return success response as plain dict
+        return {
+            "success": True,
+            "message": "¡Gracias por tu feedback! Lo apreciamos mucho."
+        }
 
     except Exception as e:
         error_msg = str(e)
