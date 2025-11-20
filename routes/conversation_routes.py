@@ -1,3 +1,7 @@
+"""
+Conversation routes for managing chat conversations
+"""
+
 from fastapi import APIRouter, HTTPException, Request, status, Depends
 from pydantic import BaseModel
 from typing import Optional

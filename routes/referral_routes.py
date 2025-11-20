@@ -115,18 +115,22 @@ async def redeem_referral_code(
 async def validate_referral_code(referral_code: str) -> Dict[str, Any]:
     """
     Validate if a referral code exists and is valid.
-    Public endpoint (no auth required) to check code before registration.
+    PUBLIC endpoint (no auth required) to check code before registration.
+    This must be public because users aren't logged in yet when validating.
     """
     try:
+        print(f"[REFERRAL-VALIDATE] Validating code: {referral_code}")
         referrer = await ReferralService.validate_referral_code(referral_code)
         
         if referrer:
+            print(f"[REFERRAL-VALIDATE] ✅ Code is valid")
             return {
                 "success": True,
                 "valid": True,
                 "message": "Valid referral code"
             }
         else:
+            print(f"[REFERRAL-VALIDATE] ❌ Code is invalid")
             return {
                 "success": True,
                 "valid": False,
@@ -134,6 +138,7 @@ async def validate_referral_code(referral_code: str) -> Dict[str, Any]:
             }
         
     except Exception as e:
+        print(f"[REFERRAL-VALIDATE] ❌ Error: {str(e)}")
         SecurityLogger.log_api_error(
             api_name="GET /api/referrals/validate/{referral_code}",
             error_message=str(e),
