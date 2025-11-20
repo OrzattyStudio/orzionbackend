@@ -74,8 +74,27 @@ async def chat(
         if request.enable_search:
             search_context = await SearchService.search_web(prompt)
 
+        # Get user memories and inject into context (if authenticated)
+        memories_context = None
+        if user_id:
+            try:
+                from services.memory_service import MemoryService
+                memories_context = await MemoryService.format_memories_for_prompt(user_id)
+                if memories_context:
+                    print(f"🧠 Injecting {len(memories_context)} chars of user memories")
+            except Exception as e:
+                print(f"⚠️ Error getting memories (non-critical): {e}")
+
         # Build message list
         messages = []
+        
+        # Inject memories at the beginning if available
+        if memories_context:
+            messages.append({
+                "role": "system",
+                "content": memories_context
+            })
+        
         for msg in request.history:
             messages.append({"role": msg.role, "content": msg.content})
 
@@ -186,8 +205,27 @@ async def chat_stream(
         if request.enable_search:
             search_context = await SearchService.search_web(prompt)
 
+        # Get user memories and inject into context (if authenticated)
+        memories_context = None
+        if user_id:
+            try:
+                from services.memory_service import MemoryService
+                memories_context = await MemoryService.format_memories_for_prompt(user_id)
+                if memories_context:
+                    print(f"🧠 Injecting {len(memories_context)} chars of user memories into stream")
+            except Exception as e:
+                print(f"⚠️ Error getting memories (non-critical): {e}")
+
         # Build message list
         messages = []
+        
+        # Inject memories at the beginning if available
+        if memories_context:
+            messages.append({
+                "role": "system",
+                "content": memories_context
+            })
+        
         for msg in request.history:
             messages.append({"role": msg.role, "content": msg.content})
 

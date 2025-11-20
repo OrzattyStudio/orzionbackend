@@ -26,7 +26,8 @@ from routes import (
     referral_routes,
     feedback_routes,
     usage_routes,
-    email_routes
+    email_routes,
+    memory_routes
 )
 from config import config
 from services.supabase_service import SupabaseService
@@ -190,6 +191,7 @@ app.include_router(feedback_routes.router, tags=["feedback"])
 app.include_router(subscription_routes.router, tags=["subscriptions"])
 app.include_router(payment_routes.router, tags=["payments"])
 app.include_router(email_routes.router)
+app.include_router(memory_routes.router, prefix="/api", tags=["memories"])
 
 frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
 print(f"Frontend directory: {frontend_dir}")
