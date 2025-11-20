@@ -9,7 +9,7 @@ from services.security_logger import SecurityLogger
 
 class SubscriptionService:
     """Service for managing user subscriptions and plans"""
-    
+
     @staticmethod
     async def get_user_active_plan(user_id: str) -> Dict[str, Any]:
         """
@@ -24,14 +24,20 @@ class SubscriptionService:
                     "status": "active",
                     "expires_at": None
                 }
-            
+
             # Use RPC function to get active plan
             result = supabase.rpc('get_user_active_plan', {
                 'p_user_id': user_id
             }).execute()
-            
-            plan_name = result.data if result.data else "Free"
-            
+
+            # The RPC call `get_user_active_plan` returns a dictionary with a 'plan_name' key
+            # if a plan is found, or None if no active plan is found.
+            # We need to handle both cases.
+            if result.data and isinstance(result.data, dict) and 'plan_name' in result.data:
+                plan_name = result.data['plan_name']
+            else:
+                plan_name = "Free"
+
             # Get subscription details
             response = supabase.table('user_subscriptions')\
                 .select('*')\
@@ -40,7 +46,7 @@ class SubscriptionService:
                 .eq('status', 'active')\
                 .maybe_single()\
                 .execute()
-            
+
             if response.data:
                 return {
                     "plan_name": response.data['plan_name'],
@@ -49,13 +55,13 @@ class SubscriptionService:
                     "starts_at": response.data.get('starts_at'),
                     "payment_method": response.data.get('payment_method')
                 }
-            
+
             return {
                 "plan_name": "Free",
                 "status": "active",
                 "expires_at": None
             }
-            
+
         except Exception as e:
             SecurityLogger.log_api_error(
                 api_name="SubscriptionService.get_user_active_plan",
@@ -67,7 +73,7 @@ class SubscriptionService:
                 "status": "active",
                 "expires_at": None
             }
-    
+
     @staticmethod
     async def get_all_plans() -> list:
         """Get all available subscription plans"""
@@ -75,14 +81,14 @@ class SubscriptionService:
             supabase = get_supabase_service()
             if not supabase:
                 return []
-            
+
             response = supabase.table('subscription_plans')\
                 .select('*')\
                 .order('price_monthly')\
                 .execute()
-            
+
             return response.data if response.data else []
-            
+
         except Exception as e:
             SecurityLogger.log_api_error(
                 api_name="SubscriptionService.get_all_plans",
@@ -90,7 +96,7 @@ class SubscriptionService:
                 correlation_id=SecurityLogger.generate_correlation_id()
             )
             return []
-    
+
     @staticmethod
     async def get_user_subscriptions(user_id: str) -> list:
         """Get all subscriptions for a user (active and expired)"""
@@ -98,15 +104,15 @@ class SubscriptionService:
             supabase = get_supabase_service()
             if not supabase:
                 return []
-            
+
             response = supabase.table('user_subscriptions')\
                 .select('*')\
                 .eq('user_id', user_id)\
                 .order('created_at', desc=True)\
                 .execute()
-            
+
             return response.data if response.data else []
-            
+
         except Exception as e:
             SecurityLogger.log_api_error(
                 api_name="SubscriptionService.get_user_subscriptions",
@@ -114,7 +120,7 @@ class SubscriptionService:
                 correlation_id=SecurityLogger.generate_correlation_id()
             )
             return []
-    
+
     @staticmethod
     async def get_subscription_history(user_id: str) -> list:
         """Get subscription change history for a user"""
@@ -122,16 +128,16 @@ class SubscriptionService:
             supabase = get_supabase_service()
             if not supabase:
                 return []
-            
+
             response = supabase.table('subscription_history')\
                 .select('*')\
                 .eq('user_id', user_id)\
                 .order('created_at', desc=True)\
                 .limit(50)\
                 .execute()
-            
+
             return response.data if response.data else []
-            
+
         except Exception as e:
             SecurityLogger.log_api_error(
                 api_name="SubscriptionService.get_subscription_history",
@@ -139,7 +145,7 @@ class SubscriptionService:
                 correlation_id=SecurityLogger.generate_correlation_id()
             )
             return []
-    
+
     @staticmethod
     async def grant_subscription(
         user_id: str,
@@ -159,15 +165,17 @@ class SubscriptionService:
                     "success": False,
                     "error": "Database service unavailable"
                 }
-            
+
             result = supabase.rpc('grant_subscription_time', {
                 'p_user_id': user_id,
                 'p_plan_name': plan_name,
                 'p_duration_days': duration_days,
                 'p_reason': f'Granted via {payment_method}'
             }).execute()
-            
-            if result.data and result.data.get('success'):
+
+            # The RPC call `grant_subscription_time` returns a dictionary with a 'success' key.
+            # We need to ensure result.data is not None and contains 'success' before proceeding.
+            if result.data and isinstance(result.data, dict) and result.data.get('success'):
                 SecurityLogger.log_security_event(
                     event_type="SUBSCRIPTION_GRANTED",
                     user_id=user_id,
@@ -179,18 +187,18 @@ class SubscriptionService:
                     },
                     correlation_id=SecurityLogger.generate_correlation_id()
                 )
-                
+
                 return {
                     "success": True,
                     "subscription_id": result.data.get('subscription_id'),
                     "expires_at": result.data.get('expires_at')
                 }
-            
+
             return {
                 "success": False,
-                "error": result.data.get('error', 'Unknown error') if result.data else 'Failed to grant subscription'
+                "error": result.data.get('error', 'Unknown error') if result.data and isinstance(result.data, dict) else 'Failed to grant subscription'
             }
-            
+
         except Exception as e:
             SecurityLogger.log_api_error(
                 api_name="SubscriptionService.grant_subscription",
@@ -201,7 +209,7 @@ class SubscriptionService:
                 "success": False,
                 "error": str(e)
             }
-    
+
     @staticmethod
     async def cancel_subscription(user_id: str, plan_name: str) -> Dict[str, Any]:
         """Cancel a user's subscription"""
@@ -212,9 +220,9 @@ class SubscriptionService:
                     "success": False,
                     "error": "Database service unavailable"
                 }
-            
+
             now = datetime.utcnow()
-            
+
             # Update subscription status to cancelled
             supabase.table('user_subscriptions')\
                 .update({
@@ -226,27 +234,30 @@ class SubscriptionService:
                 .eq('plan_name', plan_name)\
                 .eq('status', 'active')\
                 .execute()
-            
+
             # Log cancellation
+            # We should check if the update operation was successful before inserting into history.
+            # However, Supabase's client library doesn't easily provide the success status of update operations.
+            # For now, we'll proceed with the insertion, assuming the update is usually successful if no exception is raised.
             supabase.table('subscription_history').insert({
                 "user_id": user_id,
                 "action": "cancelled",
                 "from_plan": plan_name,
                 "reason": "User requested cancellation"
             }).execute()
-            
+
             SecurityLogger.log_security_event(
                 event_type="SUBSCRIPTION_CANCELLED",
                 user_id=user_id,
                 details={"plan_name": plan_name},
                 correlation_id=SecurityLogger.generate_correlation_id()
             )
-            
+
             return {
                 "success": True,
                 "message": "Subscription cancelled successfully"
             }
-            
+
         except Exception as e:
             SecurityLogger.log_api_error(
                 api_name="SubscriptionService.cancel_subscription",

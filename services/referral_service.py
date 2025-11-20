@@ -355,42 +355,26 @@ class ReferralService:
             total_referrals = updated_count.count if updated_count.count is not None else 1
             
             # Calculate reward based on total referrals (NOW including the current one)
-            if total_referrals == 1:
-                # First referral: Pro plan for 2 weeks (14 days)
-                supabase.rpc('grant_subscription_time', {
-                    'p_user_id': referrer_id,
-                    'p_plan_name': 'Pro',
-                    'p_duration_days': 14,
-                    'p_reason': 'First referral bonus'
-                }).execute()
-                reward_msg = "Plan Pro por 2 semanas"
-            elif total_referrals < 10:
-                # Additional referrals (2-9): Extend Pro by 3 weeks (21 days)
-                supabase.rpc('grant_subscription_time', {
-                    'p_user_id': referrer_id,
-                    'p_plan_name': 'Pro',
-                    'p_duration_days': 21,
-                    'p_reason': f'Referral #{total_referrals} bonus'
-                }).execute()
-                reward_msg = "Plan Pro extendido por 3 semanas"
-            elif total_referrals == 10:
-                # 10th referral: Grant Teams plan for 2 weeks (14 days)
+            # Every referral grants 1 week of Pro plan (7 days)
+            supabase.rpc('grant_subscription_time', {
+                'p_user_id': referrer_id,
+                'p_plan_name': 'Pro',
+                'p_duration_days': 7,
+                'p_reason': f'Referral #{total_referrals} bonus'
+            }).execute()
+            
+            reward_msg = "Plan Pro por 1 semana"
+            
+            # Check if this is a multiple of 10 referrals (10, 20, 30, etc.)
+            if total_referrals % 10 == 0:
+                # Grant Teams plan for 2 weeks (14 days) as milestone bonus
                 supabase.rpc('grant_subscription_time', {
                     'p_user_id': referrer_id,
                     'p_plan_name': 'Teams',
                     'p_duration_days': 14,
-                    'p_reason': '10 referrals milestone - Teams bonus'
+                    'p_reason': f'{total_referrals} referrals milestone - Teams bonus'
                 }).execute()
-                reward_msg = "Plan Teams por 2 semanas (¡Meta de 10 referidos alcanzada!)"
-            else:
-                # Beyond 10 referrals: Continue extending Pro by 3 weeks
-                supabase.rpc('grant_subscription_time', {
-                    'p_user_id': referrer_id,
-                    'p_plan_name': 'Pro',
-                    'p_duration_days': 21,
-                    'p_reason': f'Referral #{total_referrals} bonus'
-                }).execute()
-                reward_msg = "Plan Pro extendido por 3 semanas"
+                reward_msg = f"Plan Pro por 1 semana + Plan Teams por 2 semanas (¡{total_referrals} referidos completados!)"
             
             # Log successful referral
             SecurityLogger.log_security_event(

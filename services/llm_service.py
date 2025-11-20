@@ -167,7 +167,19 @@ class LLMService:
     
     @staticmethod
     async def _deepresearch_stream(messages: list, search_context: Optional[str]) -> AsyncGenerator[str, None]:
-        """Stream from DeepResearch model."""
+        """Stream from DeepResearch model - fallback to Pro if not configured."""
+        
+        # Check if DeepResearch is configured
+        if not config.MODEL_RESEARCH or not config.MODEL_RESEARCH_KEY:
+            print("⚠️ [DeepResearch] Not configured, falling back to Pro")
+            yield "🔬 **Modo Deep Research** (usando Orzion Pro)\n\n"
+            
+            # Use Pro model instead
+            model_config = LLMService.get_model_config("Orzion Pro")
+            async for chunk in LLMService._single_model_stream(model_config, messages, search_context, "Orzion Pro", "deepresearch"):
+                yield chunk
+            return
+        
         system_prompt = get_system_prompt("DeepResearch", search_context)
         
         full_messages = [
@@ -177,7 +189,8 @@ class LLMService:
         payload = {
             "model": config.MODEL_RESEARCH,
             "messages": full_messages,
-            "stream": True
+            "stream": True,
+            "temperature": 0.7
         }
         
         headers = {
@@ -202,8 +215,13 @@ class LLMService:
                     
                     if response.status_code != 200:
                         error_text = await response.aread()
-                        print(f"🔴 [DeepResearch] Error: {error_text.decode()}")
-                        yield f"Error: {response.status_code}"
+                        print(f"🔴 [DeepResearch] Error {response.status_code}: {error_text.decode()}")
+                        
+                        # Fallback to Pro on error
+                        yield "⚠️ Deep Research no disponible, usando Orzion Pro...\n\n"
+                        model_config = LLMService.get_model_config("Orzion Pro")
+                        async for chunk in LLMService._single_model_stream(model_config, messages, search_context, "Orzion Pro", "deepresearch"):
+                            yield chunk
                         return
                     
                     async for line in response.aiter_lines():
@@ -222,7 +240,11 @@ class LLMService:
                             except json.JSONDecodeError:
                                 continue
         except Exception as e:
-            yield f"❌ Error en DeepResearch: {str(e)}"
+            print(f"❌ [DeepResearch] Exception: {str(e)}")
+            yield "⚠️ Error en Deep Research, usando Orzion Pro...\n\n"
+            model_config = LLMService.get_model_config("Orzion Pro")
+            async for chunk in LLMService._single_model_stream(model_config, messages, search_context, "Orzion Pro", "deepresearch"):
+                yield chunk
     
     @staticmethod
     async def _dual_model_stream(model_config: Dict, messages: list, search_context: Optional[str], special_mode: Optional[str]) -> AsyncGenerator[str, None]:
