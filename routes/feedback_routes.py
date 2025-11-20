@@ -61,12 +61,26 @@ async def submit_feedback(
         }
 
     except Exception as e:
+        error_msg = str(e)
         SecurityLogger.log_api_error(
             api_name="POST /api/feedback/submit",
-            error_message=str(e),
+            error_message=error_msg,
             correlation_id=SecurityLogger.generate_correlation_id()
         )
-        raise HTTPException(status_code=500, detail="Error al enviar feedback")
+        
+        # Provide more specific error message
+        if "user_feedback" in error_msg.lower() or "relation" in error_msg.lower():
+            raise HTTPException(
+                status_code=500, 
+                detail="La tabla de feedback no está configurada. Por favor contacta al administrador."
+            )
+        elif "supabase" in error_msg.lower() or "database" in error_msg.lower():
+            raise HTTPException(
+                status_code=500, 
+                detail="Error de conexión con la base de datos. Por favor intenta más tarde."
+            )
+        else:
+            raise HTTPException(status_code=500, detail=f"Error al enviar feedback: {error_msg}")
 
 
 @router.get("/my-stats")

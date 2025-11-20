@@ -15,7 +15,8 @@ class SupabaseService:
         "conversations",
         "messages",
         "audit_logs",
-        "rate_limits"
+        "rate_limits",
+        "user_feedback"
     ]
     
     @classmethod
