@@ -1,3 +1,7 @@
+
+"""
+Email Service - Email verification and password reset using Resend
+"""
 import resend
 import secrets
 from datetime import datetime, timedelta

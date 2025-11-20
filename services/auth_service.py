@@ -19,7 +19,7 @@ class AuthService:
             user_metadata = {}
             if full_name:
                 user_metadata["full_name"] = full_name
-            
+
             # Disable email confirmation in the sign up request
             response = supabase_client.auth.sign_up({
                 "email": email,
@@ -29,12 +29,12 @@ class AuthService:
                     "email_redirect_to": None  # Disable email confirmation
                 }
             })
-            
+
             print(f"📧 Sign up response received for: {email}")
             print(f"📧 User ID: {response.user.id if response.user else 'None'}")
-            
+
             if response.user:
-                
+
                 return {
                     "id": response.user.id,
                     "email": response.user.email,
@@ -43,12 +43,12 @@ class AuthService:
                     "created_at": response.user.created_at
                 }
             return None
-            
+
         except AuthApiError as e:
             error_msg = str(e)
             print(f"❌ Supabase Auth error during sign up: {error_msg}")
             print(f"❌ Error type: {type(e).__name__}")
-            
+
             # Log comprehensive error details
             if hasattr(e, 'message'):
                 print(f"❌ Error message attr: {e.message}")
@@ -58,7 +58,7 @@ class AuthService:
                 print(f"❌ Error code: {e.code}")
             if hasattr(e, 'args') and e.args:
                 print(f"❌ Error args: {e.args}")
-            
+
             # Try to extract JSON error details
             try:
                 import json
@@ -67,17 +67,17 @@ class AuthService:
                     print(f"❌ Supabase error JSON: {json.dumps(error_json, indent=2)}")
             except:
                 pass
-            
+
             # Check if it's a duplicate email error
             if "already registered" in error_msg.lower() or "duplicate" in error_msg.lower() or "unique" in error_msg.lower() or "already been registered" in error_msg.lower():
                 print("⚠️ User already exists")
                 raise Exception("Este correo ya está registrado. Intenta iniciar sesión.")
-            
+
             # Check for database or email confirmation errors
             if "database error" in error_msg.lower() or "500" in error_msg or "internal server error" in error_msg.lower():
                 print("⚠️ Supabase internal server error - possible trigger or RLS policy issue")
                 raise Exception("Error del servidor de autenticación. Verifica la configuración de Supabase (triggers, policies).")
-            
+
             # Generic error for other cases
             raise Exception(f"Error al crear la cuenta: {error_msg}")
         except Exception as e:
@@ -87,7 +87,7 @@ class AuthService:
                 raise
             print(f"❌ Unexpected error during sign up: {e}")
             raise Exception(f"Error inesperado: {error_msg}")
-    
+
     @staticmethod
     async def sign_in(email: str, password: str) -> Optional[Dict]:
         """Sign in user with Supabase Auth."""
@@ -97,7 +97,7 @@ class AuthService:
                 "email": email,
                 "password": password
             })
-            
+
             if response.user and response.session:
                 return {
                     "user": {
@@ -114,14 +114,14 @@ class AuthService:
                     }
                 }
             return None
-            
+
         except AuthApiError as e:
             print(f"❌ Supabase Auth error during sign in: {e}")
             return None
         except Exception as e:
             print(f"❌ Error during sign in: {e}")
             return None
-    
+
     @staticmethod
     async def sign_in_with_google(id_token: str) -> Optional[Dict]:
         """Sign in with Google OAuth using ID token."""
@@ -131,7 +131,7 @@ class AuthService:
                 "provider": "google",
                 "token": id_token
             })
-            
+
             if response.user and response.session:
                 return {
                     "user": {
@@ -148,21 +148,21 @@ class AuthService:
                     }
                 }
             return None
-            
+
         except AuthApiError as e:
             print(f"❌ Supabase Auth error during Google sign in: {e}")
             return None
         except Exception as e:
             print(f"❌ Error during Google sign in: {e}")
             return None
-    
+
     @staticmethod
     async def get_user_from_token(access_token: str) -> Optional[Dict]:
         """Get user data from access token."""
         supabase_client = get_supabase_client()
         try:
             response = supabase_client.auth.get_user(access_token)
-            
+
             if response.user:
                 return {
                     "id": response.user.id,
@@ -173,14 +173,14 @@ class AuthService:
                     "created_at": response.user.created_at
                 }
             return None
-            
+
         except AuthApiError as e:
             print(f"❌ Supabase Auth error getting user: {e}")
             return None
         except Exception as e:
             print(f"❌ Error getting user from token: {e}")
             return None
-    
+
     @staticmethod
     async def sign_out(access_token: str) -> bool:
         """Sign out user."""

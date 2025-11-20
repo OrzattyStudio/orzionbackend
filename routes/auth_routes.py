@@ -86,10 +86,8 @@ async def register(request: RegisterRequest, req: Request, response: Response):
         except Exception as settings_error:
             print(f"⚠️ Could not create user settings: {settings_error}")
 
-        # Send verification email asynchronously (don't wait for it)
-        from services.email_service import EmailService
-        import asyncio
-        asyncio.create_task(EmailService.send_verification_email(email, user['id'], full_name))
+        # Email verification completely disabled - users can login immediately
+        # No verification emails are sent to avoid rate limits
 
         await SecurityMiddleware.log_audit(
             user_id=user['id'],
