@@ -166,6 +166,17 @@ class ConversationService:
     async def generate_smart_title(user_message: str, assistant_response: str) -> str:
         """Generate a smart title for the conversation using LLM."""
         try:
+            # Extraer solo texto del mensaje del usuario si es un objeto
+            if isinstance(user_message, dict):
+                user_message = user_message.get('text', str(user_message))
+            
+            # Convertir a string si no lo es
+            user_message = str(user_message)
+            
+            # Si el mensaje es muy corto, usarlo directamente
+            if len(user_message) < 60:
+                return user_message.strip()
+            
             title_prompt = f"""Genera un título corto (máximo 6 palabras) para esta conversación. 
 Solo responde con el título, sin comillas ni explicaciones adicionales.
 
@@ -186,10 +197,26 @@ Título:"""
             if len(title) > 60:
                 title = title[:60] + "..."
             
+            # Si el título está vacío o contiene errores, usar fallback
+            if not title or "error" in title.lower() or "404" in title:
+                # Generar título simple basado en las primeras palabras del mensaje
+                words = user_message.split()[:6]
+                title = " ".join(words)
+                if len(user_message) > len(title):
+                    title += "..."
+            
             return title if title else user_message[:60]
         except Exception as e:
             print(f"⚠️ Error generando título inteligente: {e}")
-            return user_message[:60]
+            # Fallback: usar las primeras palabras del mensaje del usuario
+            try:
+                words = str(user_message).split()[:6]
+                fallback_title = " ".join(words)
+                if len(str(user_message)) > len(fallback_title):
+                    fallback_title += "..."
+                return fallback_title
+            except:
+                return "Nueva conversación"
 
     @staticmethod
     async def save_chat(
@@ -204,7 +231,20 @@ Título:"""
             if not conversation_id:
                 user_messages = [msg for msg in messages if msg['role'] == 'user']
                 last_user_msg = user_messages[-1] if user_messages else None
-                user_content = last_user_msg['content'] if last_user_msg else ""
+                
+                # Extraer contenido del mensaje (puede ser string o dict con imagen)
+                user_content = ""
+                if last_user_msg:
+                    if isinstance(last_user_msg['content'], str):
+                        user_content = last_user_msg['content']
+                    elif isinstance(last_user_msg['content'], dict):
+                        user_content = last_user_msg['content'].get('text', '')
+                    else:
+                        user_content = str(last_user_msg['content'])
+                
+                # Si no hay contenido, usar un título por defecto
+                if not user_content:
+                    user_content = "Nueva conversación"
                 
                 # Generar título inteligente
                 print(f"🤔 Generando título inteligente para la conversación...")
