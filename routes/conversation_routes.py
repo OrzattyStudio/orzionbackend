@@ -1,7 +1,3 @@
-"""
-Conversation routes for managing chat conversations
-"""
-
 from fastapi import APIRouter, HTTPException, Request, status, Depends
 from pydantic import BaseModel
 from typing import Optional
@@ -97,7 +93,7 @@ async def list_conversations(
             detail="Error interno del servidor"
         )
 
-@router.get("/{conversation_id}")
+@router.get("/conversations/{conversation_id}")
 async def get_conversation(
     conversation_id: int,
     user: dict = Depends(AuthMiddleware.require_auth)
