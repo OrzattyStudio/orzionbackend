@@ -35,12 +35,7 @@ class Config:
     # LLM Model Configuration
     ORZION_PRO_URL = os.getenv("ORZION_PRO_URL", "https://openrouter.ai/api/v1/chat/completions")
     ORZION_PRO_KEY = os.getenv("ORZION_PRO_KEY", "")
-    ORZION_PRO_MODEL = os.getenv('ORZION_PRO_MODEL', 'deepseek/deepseek-chat-v3-0324:free')
-
-    # Hugging Face Router (Kimi K2) - Main model for Orzion Pro (1T+ parameters)
-    COMET_API_URL = os.getenv("COMET_API_URL", "https://router.huggingface.co/v1/chat/completions")
-    COMET_API_KEY = os.getenv("HF_TOKEN", "")
-    COMET_MODEL = os.getenv("COMET_MODEL", "moonshotai/Kimi-K2-Instruct-0905:groq")
+    ORZION_PRO_MODEL = os.getenv('ORZION_PRO_MODEL', 'x-ai/grok-2-1212')
 
     # Special Models - NO hardcoded keys
     MODEL_RESEARCH = os.getenv("MODEL_RESEARCH", "alibaba/tongyi-deepresearch-30b-a3b:free")

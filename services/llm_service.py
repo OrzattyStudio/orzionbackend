@@ -118,11 +118,7 @@ class LLMService:
             "Orzion Pro": {
                 "url": config.ORZION_PRO_URL,
                 "key": config.ORZION_PRO_KEY,
-                "model": config.ORZION_PRO_MODEL,
-                # Comet API for secondary model
-                "url_secondary": config.COMET_API_URL,
-                "key_secondary": config.COMET_API_KEY,
-                "model_secondary": config.COMET_MODEL
+                "model": config.ORZION_PRO_MODEL
             },
             "Orzion Turbo": {
                 "url": config.ORZION_TURBO_URL,
@@ -355,20 +351,10 @@ class LLMService:
             {"role": "system", "content": system_prompt}
         ] + messages
         
-        # Para Orzion Pro, usar Comet API
-        if model_name == "Orzion Pro":
-            api_url = model_config.get("url_secondary", model_config["url"])
-            api_key = model_config.get("key_secondary", model_config["key"])
-            model_id = model_config.get("model_secondary", model_config["model"])
-            
-            # Validar que la key secundaria exista para Orzion Pro
-            if not api_key:
-                yield "❌ Error: El token de Hugging Face (HF_TOKEN) no está configurado. Por favor, añádelo en los Secrets."
-                return
-        else:
-            api_url = model_config["url"]
-            api_key = model_config["key"]
-            model_id = model_config["model"]
+        # Use main configuration for all models
+        api_url = model_config["url"]
+        api_key = model_config["key"]
+        model_id = model_config["model"]
         
         payload = {
             "model": model_id,
