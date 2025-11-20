@@ -97,23 +97,21 @@ async def list_conversations(
             detail="Error interno del servidor"
         )
 
-@router.get("/conversations/{conversation_id}")
+@router.get("/{conversation_id}")
 async def get_conversation(
     conversation_id: int,
     user: dict = Depends(AuthMiddleware.require_auth)
 ):
     """Get a specific conversation with its messages."""
     try:
-        result = await ConversationService.get_conversation(conversation_id, user['id'])
+        # Get conversation
+        conversation = await ConversationService.get_conversation(conversation_id, user['id'])
 
-        if not result:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Conversación no encontrada"
-            )
+        if not conversation:
+            raise HTTPException(status_code=404, detail="Conversación no encontrada")
 
         # Check if user owns this conversation
-        if result['user_id'] != user['id']:
+        if conversation['user_id'] != user['id']:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No tienes permiso para acceder a esta conversación"
@@ -124,18 +122,16 @@ async def get_conversation(
 
         return {
             "success": True,
-            "conversation": result,
-            "messages": messages
+            "conversation": conversation,
+            "messages": messages,
+            "model": conversation.get('model', 'Orzion Pro')  # Include model
         }
 
     except HTTPException:
         raise
     except Exception as e:
         print(f"❌ Error getting conversation: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error interno del servidor"
-        )
+        raise HTTPException(status_code=500, detail="Error al obtener la conversación")
 
 @router.patch("/conversations/{conversation_id}")
 async def update_conversation(
