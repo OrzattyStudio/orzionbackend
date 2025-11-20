@@ -32,29 +32,30 @@ class SubscriptionService:
 
             # The RPC call `get_user_active_plan` returns a dictionary with a 'plan_name' key
             # if a plan is found, or None if no active plan is found.
-            # We need to handle both cases.
-            if result.data and isinstance(result.data, dict) and 'plan_name' in result.data:
-                plan_name = result.data['plan_name']
-            else:
-                plan_name = "Free"
+            # We need to handle both cases, including when result or result.data is None
+            plan_name = "Free"
+            if result and hasattr(result, 'data') and result.data:
+                if isinstance(result.data, dict) and 'plan_name' in result.data:
+                    plan_name = result.data['plan_name']
 
-            # Get subscription details
-            response = supabase.table('user_subscriptions')\
-                .select('*')\
-                .eq('user_id', user_id)\
-                .eq('plan_name', plan_name)\
-                .eq('status', 'active')\
-                .maybe_single()\
-                .execute()
+            # Get subscription details only if plan_name is not Free
+            if plan_name != "Free":
+                response = supabase.table('user_subscriptions')\
+                    .select('*')\
+                    .eq('user_id', user_id)\
+                    .eq('plan_name', plan_name)\
+                    .eq('status', 'active')\
+                    .maybe_single()\
+                    .execute()
 
-            if response.data:
-                return {
-                    "plan_name": response.data['plan_name'],
-                    "status": response.data['status'],
-                    "expires_at": response.data.get('expires_at'),
-                    "starts_at": response.data.get('starts_at'),
-                    "payment_method": response.data.get('payment_method')
-                }
+                if response and hasattr(response, 'data') and response.data:
+                    return {
+                        "plan_name": response.data['plan_name'],
+                        "status": response.data['status'],
+                        "expires_at": response.data.get('expires_at'),
+                        "starts_at": response.data.get('starts_at'),
+                        "payment_method": response.data.get('payment_method')
+                    }
 
             return {
                 "plan_name": "Free",
