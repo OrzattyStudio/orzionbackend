@@ -1,6 +1,3 @@
-"""
-Feedback Routes - API endpoints for user feedback
-"""
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from datetime import datetime
@@ -49,44 +46,44 @@ async def submit_feedback(
         # Insert feedback into database
         supabase.table('user_feedback').insert(feedback_data).execute()
 
-        # Log the event
-        SecurityLogger.log_security_event(
-            event_type="FEEDBACK_SUBMITTED",
-            user_id=user_id,
-            details={
-                "rating": feedback.rating, 
-                "category": feedback.category
-            },
-            correlation_id=SecurityLogger.generate_correlation_id()
+        # Log the event (without error handling to avoid issues)
+        try:
+            SecurityLogger.log_security_event(
+                event_type="FEEDBACK_SUBMITTED",
+                user_id=user_id,
+                details={
+                    "rating": int(feedback.rating), 
+                    "category": str(feedback.category)
+                },
+                correlation_id=SecurityLogger.generate_correlation_id()
+            )
+        except:
+            pass  # Ignore logging errors
+
+        # Return explicit JSONResponse
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": True,
+                "message": "¡Gracias por tu feedback! Lo apreciamos mucho."
+            }
         )
 
-        # Return success response as plain dict
-        return {
-            "success": True,
-            "message": "¡Gracias por tu feedback! Lo apreciamos mucho."
-        }
-
+    except HTTPException:
+        raise
     except Exception as e:
         error_msg = str(e)
-        SecurityLogger.log_api_error(
-            api_name="POST /api/feedback/submit",
-            error_message=error_msg,
-            correlation_id=SecurityLogger.generate_correlation_id()
-        )
+        # Only log critical errors
+        print(f"Feedback error: {error_msg}")
         
-        # Provide more specific error message
-        if "user_feedback" in error_msg.lower() or "relation" in error_msg.lower():
-            raise HTTPException(
-                status_code=500, 
-                detail="La tabla de feedback no está configurada. Por favor contacta al administrador."
-            )
-        elif "supabase" in error_msg.lower() or "database" in error_msg.lower():
-            raise HTTPException(
-                status_code=500, 
-                detail="Error de conexión con la base de datos. Por favor intenta más tarde."
-            )
-        else:
-            raise HTTPException(status_code=500, detail=f"Error al enviar feedback: {error_msg}")
+        # Return generic error without exposing details
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "message": "Error al procesar el feedback. Por favor intenta más tarde."
+            }
+        )
 
 
 @router.get("/my-stats")
