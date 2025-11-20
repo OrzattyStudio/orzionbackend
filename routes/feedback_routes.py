@@ -1,7 +1,4 @@
-"""
-Feedback Routes - API endpoints for user feedback
-"""
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from datetime import datetime
 from typing import Dict, Any
@@ -46,19 +43,28 @@ async def submit_feedback(
             "created_at": datetime.utcnow().isoformat()
         }
 
-        response = supabase.table('user_feedback').insert(feedback_data).execute()
+        # Insert feedback into database
+        supabase.table('user_feedback').insert(feedback_data).execute()
 
+        # Log the event
         SecurityLogger.log_security_event(
             event_type="FEEDBACK_SUBMITTED",
             user_id=user_id,
-            details={"rating": feedback.rating, "category": feedback.category},
+            details={
+                "rating": feedback.rating, 
+                "category": feedback.category
+            },
             correlation_id=SecurityLogger.generate_correlation_id()
         )
 
-        return {
-            "success": True,
-            "message": "¡Gracias por tu feedback! Lo apreciamos mucho."
-        }
+        # Return success response
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": True,
+                "message": "¡Gracias por tu feedback! Lo apreciamos mucho."
+            }
+        )
 
     except Exception as e:
         error_msg = str(e)
