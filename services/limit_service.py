@@ -220,11 +220,25 @@ class RateLimitService:
             
             if messages_daily_limit != -1 and messages_used >= messages_daily_limit:
                 time_until_reset = RateLimitService._get_time_until_reset()
-                return (False, f"Límite diario de mensajes alcanzado para {model}. Límite: {messages_daily_limit} mensajes. Espera hasta mañana ({time_until_reset}) o actualiza a un plan superior.", usage_info)
+                return (False, {
+                    "type": "messages_limit",
+                    "model": model,
+                    "limit": messages_daily_limit,
+                    "used": messages_used,
+                    "reset_time": time_until_reset,
+                    "message": f"Has alcanzado el límite diario de {messages_daily_limit} mensajes para {model}."
+                }, usage_info)
             
             if tokens_daily_limit != -1 and (tokens_used + message_tokens) > tokens_daily_limit:
                 time_until_reset = RateLimitService._get_time_until_reset()
-                return (False, f"Límite diario de tokens alcanzado para {model}. Límite: {tokens_daily_limit} tokens. Espera hasta mañana ({time_until_reset}) o actualiza a un plan superior.", usage_info)
+                return (False, {
+                    "type": "tokens_limit",
+                    "model": model,
+                    "limit": tokens_daily_limit,
+                    "used": tokens_used,
+                    "reset_time": time_until_reset,
+                    "message": f"Has alcanzado el límite diario de {tokens_daily_limit} tokens para {model}."
+                }, usage_info)
             
             increment_response = await supabase.rpc('increment_daily_usage', {
                 'p_user_id': user_id,

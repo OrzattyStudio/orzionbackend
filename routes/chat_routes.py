@@ -47,18 +47,26 @@ async def chat(
         if user_id:
             # Calculate estimated tokens for the message
             message_tokens = RateLimitService.estimate_tokens(prompt)
-            
-            allowed, error_message, usage_info = await RateLimitService.check_rate_limit(
+
+            allowed, error_data, usage_info = await RateLimitService.check_rate_limit(
                 user_id,
                 request.model,
                 message_tokens
             )
             if not allowed:
-                # Return friendly error with usage info
-                error_detail = {
-                    "message": error_message,
-                    "usage_info": usage_info
-                }
+                # Return structured error for better frontend handling
+                if isinstance(error_data, dict):
+                    error_detail = {
+                        **error_data,
+                        "usage_info": usage_info,
+                        "status": "limit_exceeded"
+                    }
+                else:
+                    error_detail = {
+                        "message": str(error_data),
+                        "usage_info": usage_info,
+                        "status": "limit_exceeded"
+                    }
                 raise HTTPException(status_code=429, detail=error_detail)
 
         # Get search context if enabled
@@ -151,18 +159,26 @@ async def chat_stream(
         if user_id:
             # Calculate estimated tokens for the message
             message_tokens = RateLimitService.estimate_tokens(prompt)
-            
-            allowed, error_message, usage_info = await RateLimitService.check_rate_limit(
+
+            allowed, error_data, usage_info = await RateLimitService.check_rate_limit(
                 user_id,
                 request.model,
                 message_tokens
             )
             if not allowed:
-                # Return friendly error with usage info
-                error_detail = {
-                    "message": error_message,
-                    "usage_info": usage_info
-                }
+                # Return structured error for better frontend handling
+                if isinstance(error_data, dict):
+                    error_detail = {
+                        **error_data,
+                        "usage_info": usage_info,
+                        "status": "limit_exceeded"
+                    }
+                else:
+                    error_detail = {
+                        "message": str(error_data),
+                        "usage_info": usage_info,
+                        "status": "limit_exceeded"
+                    }
                 raise HTTPException(status_code=429, detail=error_detail)
 
         # Get search context if enabled
@@ -221,7 +237,7 @@ async def chat_stream(
                             })
                         else:
                             messages_to_save.append(msg)
-                    
+
                     conversation = await ConversationService.save_chat(
                         user_id=user_id,
                         model=request.model,
@@ -231,7 +247,7 @@ async def chat_stream(
                     )
                     if conversation:
                         conversation_id = conversation.get('id')
-                
+
                 # Siempre enviar la respuesta final con conversation_id (si existe)
                 yield f"data: {json.dumps({'conversation_id': conversation_id, 'done': True})}\n\n"
 
