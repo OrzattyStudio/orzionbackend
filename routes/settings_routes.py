@@ -36,6 +36,10 @@ class UpdateSettingsRequest(BaseModel):
     mobile_vibration: Optional[bool] = None
     full_name: Optional[str] = None
     bio: Optional[str] = None
+    auto_save: Optional[bool] = None
+    save_search_history: Optional[bool] = None
+    streaming_enabled: Optional[bool] = None
+    confirm_delete: Optional[bool] = None
 
 @router.get("/settings")
 async def get_settings(user: dict = Depends(AuthMiddleware.require_auth)):

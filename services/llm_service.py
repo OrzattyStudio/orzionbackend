@@ -412,8 +412,21 @@ class LLMService:
                     
                     if response.status_code != 200:
                         error_text = await response.aread()
-                        print(f"🔴 [{model_name}] Error response: {error_text.decode()}")
-                        yield f"Error: {response.status_code} - {error_text.decode()}"
+                        error_decoded = error_text.decode()
+                        print(f"🔴 [{model_name}] Error response: {error_decoded}")
+                        
+                        # Check if it's a rate limit error from OpenRouter
+                        if response.status_code == 429 and "rate limit exceeded" in error_decoded.lower():
+                            print(f"⚠️ [{model_name}] Rate limit alcanzado en OpenRouter")
+                            yield "⚠️ **Límite de solicitudes alcanzado**\n\n"
+                            yield "El modelo actual ha alcanzado su límite diario gratuito en OpenRouter.\n"
+                            yield "Por favor:\n"
+                            yield "1. Agrega créditos en OpenRouter para desbloquear más solicitudes\n"
+                            yield "2. Usa otro modelo (Orzion Mini tiene límites diferentes)\n"
+                            yield "3. Espera hasta que se resetee el límite diario\n\n"
+                            yield f"El límite se reseteará automáticamente en unas horas."
+                        else:
+                            yield f"Error: {response.status_code} - {error_decoded}"
                         return
                     
                     async for line in response.aiter_lines():
