@@ -237,6 +237,24 @@ async def delete_conversation(
                 detail="Error al eliminar la conversación"
             )
 
+        # Delete associated memories
+        try:
+            from services.memory_service import MemoryService
+            from services.supabase_service import get_supabase_service
+            
+            supabase = get_supabase_service()
+            print(f"🗑️ Deleting memories from conversation {conversation_id}")
+            
+            # Deactivate all memories from this conversation
+            supabase.table('user_memories')\
+                .update({'is_active': False})\
+                .eq('source_conversation_id', conversation_id)\
+                .execute()
+                
+            print(f"✅ Memories from conversation {conversation_id} deleted")
+        except Exception as e:
+            print(f"⚠️ Error deleting memories (non-critical): {e}")
+
         # Log audit
         await SecurityMiddleware.log_audit(
             user_id=user['id'],
