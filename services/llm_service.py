@@ -123,12 +123,14 @@ class LLMService:
             "Orzion Turbo": {
                 "url": config.ORZION_TURBO_URL,
                 "key": config.ORZION_TURBO_KEY,
-                "model": config.ORZION_TURBO_MODEL
+                "model": config.ORZION_TURBO_MODEL,
+                "model_secondary": config.ORZION_TURBO_MODEL_SECONDARY
             },
             "Orzion Mini": {
                 "url": config.ORZION_MINI_URL,
                 "key": config.ORZION_MINI_KEY,
-                "model": config.ORZION_MINI_MODEL
+                "model": config.ORZION_MINI_MODEL,
+                "model_secondary": config.ORZION_MINI_MODEL_SECONDARY
             }
         }
         return configs.get(model_name, configs["Orzion Pro"])

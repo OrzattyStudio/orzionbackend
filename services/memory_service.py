@@ -23,19 +23,14 @@ class MemoryService:
         Returns list of extracted memories.
         """
         try:
-            # Check for explicit memory commands FIRST (highest priority)
-            explicit_memories = MemoryService._extract_explicit_commands(user_message)
-            
             # Quick rule-based extraction for common patterns
             rule_based_memories = MemoryService._extract_rule_based(user_message, assistant_response)
             
-            # Use LLM to extract deeper insights (only if no explicit commands)
-            llm_memories = []
-            if not explicit_memories:
-                llm_memories = await MemoryService._extract_with_llm(user_message, assistant_response)
+            # Use LLM to extract deeper insights (only if authenticated user)
+            llm_memories = await MemoryService._extract_with_llm(user_message, assistant_response)
             
-            # Combine: explicit commands have priority
-            all_memories = explicit_memories + rule_based_memories + llm_memories
+            # Combine and deduplicate
+            all_memories = rule_based_memories + llm_memories
             
             # Save to database
             saved_memories = []
@@ -44,7 +39,7 @@ class MemoryService:
                     user_id=user_id,
                     memory_text=memory['text'],
                     memory_type=memory['type'],
-                    importance_score=memory.get('importance', 0.9 if memory in explicit_memories else 0.5),
+                    importance_score=memory.get('importance', 0.5),
                     source_conversation_id=conversation_id,
                     source_message_id=message_id
                 )
@@ -56,37 +51,6 @@ class MemoryService:
         except Exception as e:
             print(f"❌ Error extracting memories: {e}")
             return []
-    
-    @staticmethod
-    def _extract_explicit_commands(user_message: str) -> List[Dict]:
-        """Extract explicit memory commands from user message."""
-        memories = []
-        
-        # Patrones para comandos explícitos de memoria
-        explicit_patterns = [
-            r"recuerda\s+que\s+(.+?)(?:\.|,|$)",
-            r"guarda\s+(?:en\s+(?:tu\s+)?memoria\s+)?(?:que\s+)?(.+?)(?:\.|,|$)",
-            r"métete\s+(?:en\s+(?:la\s+)?memoria\s+)?(?:que\s+)?(.+?)(?:\.|,|$)",
-            r"no\s+olvides\s+(?:que\s+)?(.+?)(?:\.|,|$)",
-            r"anota\s+(?:que\s+)?(.+?)(?:\.|,|$)",
-            r"apunta\s+(?:que\s+)?(.+?)(?:\.|,|$)",
-        ]
-        
-        message_lower = user_message.lower()
-        
-        for pattern in explicit_patterns:
-            matches = re.findall(pattern, message_lower, re.IGNORECASE | re.MULTILINE)
-            for match in matches:
-                cleaned_text = match.strip()
-                if len(cleaned_text) > 5:  # Evitar comandos muy cortos
-                    memories.append({
-                        'text': cleaned_text,
-                        'type': 'explicit_user_request',
-                        'importance': 1.0  # Máxima importancia para comandos explícitos
-                    })
-                    print(f"✅ Comando explícito detectado: {cleaned_text[:50]}...")
-        
-        return memories[:3]  # Máximo 3 comandos explícitos por mensaje
     
     @staticmethod
     def _extract_rule_based(user_message: str, assistant_response: str) -> List[Dict]:

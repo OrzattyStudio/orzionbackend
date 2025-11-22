@@ -284,16 +284,26 @@ Título:"""
                     content=assistant_response
                 )
 
-            # Extract memories from this conversation (DISABLED - solo recuerdos del chat actual)
-            # Los recuerdos se extraen solo si el usuario lo solicita explícitamente
-            # Para evitar recordar información de chats eliminados
+            # Extract memories from this conversation
             try:
                 from services.memory_service import MemoryService
-                # MEMORY EXTRACTION DISABLED BY DEFAULT
-                # Solo se activa si el usuario pide "recuerda esto" o similar
-                print(f"ℹ️ Memory extraction disabled (only per-conversation context)")
+                if user_messages and conversation_id:
+                    last_user_content = user_messages[-1]['content']
+                    # Extract text from content (might be dict with image)
+                    if isinstance(last_user_content, dict):
+                        last_user_content = last_user_content.get('text', '')
+                    
+                    print(f"🧠 Extracting memories from conversation...")
+                    memories = await MemoryService.extract_memories_from_conversation(
+                        user_id=user_id,
+                        user_message=str(last_user_content),
+                        assistant_response=assistant_response,
+                        conversation_id=conversation_id
+                    )
+                    if memories:
+                        print(f"✅ Extracted {len(memories)} new memories")
             except Exception as e:
-                print(f"⚠️ Error in memory service: {e}")
+                print(f"⚠️ Error extracting memories (non-critical): {e}")
 
             print(f"✅ Chat saved successfully to conversation {conversation_id}")
             return {'id': conversation_id}
