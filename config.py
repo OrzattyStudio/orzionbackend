@@ -32,30 +32,72 @@ class Config:
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_SAMESITE = "Lax"
 
-    # LLM Model Configuration - NO DEFAULTS, must be set in Secrets
+    # ========================================================================
+    # LLM Model Configuration
+    # ========================================================================
+    
+    # Primary LLM API Keys
+    # Configure these in Render for production deployment
+    GOOGLE_AI_STUDIO_KEY_PRO = os.getenv("GOOGLE_AI_STUDIO_KEY_PRO", "")
+    GOOGLE_AI_STUDIO_KEY_TURBO = os.getenv("GOOGLE_AI_STUDIO_KEY_TURBO", "")
+    GOOGLE_AI_STUDIO_KEY_MINI = os.getenv("GOOGLE_AI_STUDIO_KEY_MINI", "")
+    GOOGLE_AI_STUDIO_KEY_IMAGE = os.getenv("GOOGLE_AI_STUDIO_KEY_IMAGE", "")
+    
+    # Primary LLM Models
+    GOOGLE_AI_STUDIO_PRO_MODEL = os.getenv("GOOGLE_AI_STUDIO_PRO_MODEL", "gemini-3-pro")
+    GOOGLE_AI_STUDIO_TURBO_MODEL = os.getenv("GOOGLE_AI_STUDIO_TURBO_MODEL", "gemini-2.5-flash")
+    GOOGLE_AI_STUDIO_MINI_MODEL = os.getenv("GOOGLE_AI_STUDIO_MINI_MODEL", "gemini-2.0-flash")
+    GOOGLE_AI_STUDIO_IMAGE_MODEL = os.getenv("GOOGLE_AI_STUDIO_IMAGE_MODEL", "imagen-4.0-ultra")
+    
+    # Primary LLM Base URL
+    GOOGLE_AI_STUDIO_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
+    
+    # Per-user daily quotas (to support 100+ concurrent users)
+    QUOTA_PRO_PER_USER_DAY = int(os.getenv("QUOTA_PRO_PER_USER_DAY", "2"))
+    QUOTA_TURBO_PER_USER_DAY = int(os.getenv("QUOTA_TURBO_PER_USER_DAY", "10"))
+    QUOTA_MINI_PER_USER_DAY = int(os.getenv("QUOTA_MINI_PER_USER_DAY", "12"))
+    QUOTA_IMAGE_PER_USER_DAY = int(os.getenv("QUOTA_IMAGE_PER_USER_DAY", "1"))
+    
+    # System-level quotas (daily limits)
+    QUOTA_GOOGLE_PRO_DAILY = int(os.getenv("QUOTA_GOOGLE_PRO_DAILY", "200"))
+    QUOTA_GOOGLE_TURBO_DAILY = int(os.getenv("QUOTA_GOOGLE_TURBO_DAILY", "1000"))
+    QUOTA_GOOGLE_MINI_DAILY = int(os.getenv("QUOTA_GOOGLE_MINI_DAILY", "1500"))
+    QUOTA_GOOGLE_IMAGE_DAILY = int(os.getenv("QUOTA_GOOGLE_IMAGE_DAILY", "50"))
+    
+    # Fallback LLM Configuration (automatic backup when quotas exhausted)
     ORZION_PRO_URL = os.getenv("ORZION_PRO_URL", "https://openrouter.ai/api/v1/chat/completions")
     ORZION_PRO_KEY = os.getenv("ORZION_PRO_KEY", "")
-    ORZION_PRO_MODEL = os.getenv('ORZION_PRO_MODEL', '')
-
+    ORZION_PRO_MODEL = os.getenv('ORZION_PRO_MODEL', 'meta-llama/llama-3.3-70b-instruct')
+    
+    ORZION_TURBO_URL = os.getenv("ORZION_TURBO_URL", "https://openrouter.ai/api/v1/chat/completions")
+    ORZION_TURBO_KEY = os.getenv("ORZION_TURBO_KEY", "")
+    ORZION_TURBO_MODEL = os.getenv("ORZION_TURBO_MODEL", "meta-llama/llama-3.1-8b-instruct:free")
+    
+    ORZION_MINI_URL = os.getenv("ORZION_MINI_URL", "https://openrouter.ai/api/v1/chat/completions")
+    ORZION_MINI_KEY = os.getenv("ORZION_MINI_KEY", "")
+    ORZION_MINI_MODEL = os.getenv("ORZION_MINI_MODEL", "meta-llama/llama-3.1-8b-instruct:free")
+    
+    # Image Generation Fallback
+    FLUX_IMAGE_URL = os.getenv("FLUX_IMAGE_URL", "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell")
+    FLUX_IMAGE_KEY = os.getenv("FLUX_IMAGE_KEY", "")
+    
     # Special Models - NO hardcoded keys
     MODEL_RESEARCH = os.getenv("MODEL_RESEARCH", "")
     MODEL_RESEARCH_KEY = os.getenv("MODEL_RESEARCH_KEY", "")
-
-    ORZION_TURBO_URL = os.getenv("ORZION_TURBO_URL", "https://openrouter.ai/api/v1/chat/completions")
-    ORZION_TURBO_KEY = os.getenv("ORZION_TURBO_KEY", "")
-    ORZION_TURBO_MODEL = os.getenv("ORZION_TURBO_MODEL", "")
-    ORZION_TURBO_MODEL_SECONDARY = os.getenv("ORZION_TURBO_MODEL_SECONDARY", "")
-
-    ORZION_MINI_URL = os.getenv("ORZION_MINI_URL", "https://openrouter.ai/api/v1/chat/completions")
-    ORZION_MINI_KEY = os.getenv("ORZION_MINI_KEY", "")
-    ORZION_MINI_MODEL = os.getenv("ORZION_MINI_MODEL", "")
-    ORZION_MINI_MODEL_SECONDARY = os.getenv("ORZION_MINI_MODEL_SECONDARY", "")
-
+    
+    # Legacy Google Gemini (deprecated, kept for backwards compatibility)
     GOOGLE_GEMINI_URL = os.getenv("GOOGLE_GEMINI_URL", "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent")
     GOOGLE_GEMINI_KEY = os.getenv("GOOGLE_GEMINI_KEY", "")
 
-    # Google Imagen 3 (puede usar la misma key que Gemini)
-    GOOGLE_IMAGEN_KEY = os.getenv("GOOGLE_IMAGEN_KEY", os.getenv("GOOGLE_GEMINI_KEY", ""))
+    # Cache Configuration (24h TTL)
+    RESPONSE_CACHE_TTL_SECONDS = int(os.getenv("RESPONSE_CACHE_TTL_SECONDS", str(24 * 60 * 60)))
+    
+    # Batch Processing Configuration
+    MAX_CONCURRENT_REQUESTS = int(os.getenv("MAX_CONCURRENT_REQUESTS", "5"))
+    
+    # Proxy Configuration (optional)
+    HTTP_PROXY = os.getenv("HTTP_PROXY", "")
+    HTTPS_PROXY = os.getenv("HTTPS_PROXY", "")
 
     # Google Custom Search
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
@@ -83,12 +125,17 @@ class Config:
         }
 
         important_vars = {
-            "ORZION_PRO_KEY": cls.ORZION_PRO_KEY,
-            "ORZION_TURBO_KEY": cls.ORZION_TURBO_KEY,
-            "ORZION_MINI_KEY": cls.ORZION_MINI_KEY
+            "GOOGLE_AI_STUDIO_KEY_PRO": cls.GOOGLE_AI_STUDIO_KEY_PRO,
+            "GOOGLE_AI_STUDIO_KEY_TURBO": cls.GOOGLE_AI_STUDIO_KEY_TURBO,
+            "GOOGLE_AI_STUDIO_KEY_MINI": cls.GOOGLE_AI_STUDIO_KEY_MINI,
+            "GOOGLE_AI_STUDIO_KEY_IMAGE": cls.GOOGLE_AI_STUDIO_KEY_IMAGE
         }
 
         optional_vars = {
+            "ORZION_PRO_KEY": cls.ORZION_PRO_KEY,
+            "ORZION_TURBO_KEY": cls.ORZION_TURBO_KEY,
+            "ORZION_MINI_KEY": cls.ORZION_MINI_KEY,
+            "FLUX_IMAGE_KEY": cls.FLUX_IMAGE_KEY,
             "GOOGLE_OAUTH_CLIENT_ID": cls.GOOGLE_OAUTH_CLIENT_ID,
             "GOOGLE_GEMINI_KEY": cls.GOOGLE_GEMINI_KEY,
             "GOOGLE_API_KEY": cls.GOOGLE_API_KEY,
@@ -127,11 +174,12 @@ class Config:
 
         if status["missing_important"]:
             print("\n" + "="*70)
-            print("⚠️  WARNING: Missing important environment variables")
+            print("⚠️  WARNING: Missing primary LLM API keys")
             print("="*70)
             for var in status["missing_important"]:
                 print(f"  ⚠️  {var}")
-            print("\n💡 Some LLM models may not be available.")
+            print("\n💡 System will use fallback models for responses.")
+            print("💡 Configure primary LLM keys in Render for production.")
             print("="*70 + "\n")
 
         if status["missing_optional"]:

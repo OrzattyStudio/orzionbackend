@@ -102,20 +102,23 @@ class RateLimitService:
                 
                 supabase = get_supabase_service()
                 if supabase:
-                    response = supabase.table('model_usage_quota')\
-                        .select('bonus_messages_daily, bonus_tokens_daily')\
-                        .eq('user_id', user_id)\
-                        .eq('model', model)\
-                        .execute()
-                    
-                    if response.data and len(response.data) > 0:
-                        bonus_data = response.data[0]
-                        bonus_messages = bonus_data.get('bonus_messages_daily', 0)
-                        bonus_tokens = bonus_data.get('bonus_tokens_daily', 0)
+                    try:
+                        response = supabase.table('model_usage_quota')\
+                            .select('bonus_messages_daily, bonus_tokens_daily')\
+                            .eq('user_id', user_id)\
+                            .eq('model', model)\
+                            .execute()
                         
-                        if limits["messages_daily"] != -1:
-                            limits["messages_daily"] += bonus_messages
-                        limits["tokens_daily"] += bonus_tokens
+                        if response.data and len(response.data) > 0:
+                            bonus_data = response.data[0]
+                            bonus_messages = bonus_data.get('bonus_messages_daily', 0)
+                            bonus_tokens = bonus_data.get('bonus_tokens_daily', 0)
+                            
+                            if limits["messages_daily"] != -1:
+                                limits["messages_daily"] += bonus_messages
+                            limits["tokens_daily"] += bonus_tokens
+                    except Exception as bonus_error:
+                        print(f"⚠️ Error obteniendo bonus de cuota: {bonus_error}")
                 
                 all_limits[model] = limits
             
@@ -139,18 +142,22 @@ class RateLimitService:
             
             today = datetime.utcnow().date()
             
-            response = supabase.table('model_usage_daily')\
-                .select('messages_used, tokens_used')\
-                .eq('user_id', user_id)\
-                .eq('model', model)\
-                .eq('date', today.isoformat())\
-                .execute()
+            try:
+                response = supabase.table('model_usage_daily')\
+                    .select('messages_used, tokens_used')\
+                    .eq('user_id', user_id)\
+                    .eq('model', model)\
+                    .eq('date', today.isoformat())\
+                    .execute()
+                
+                if response.data and len(response.data) > 0:
+                    return {
+                        "messages": response.data[0].get('messages_used', 0),
+                        "tokens": response.data[0].get('tokens_used', 0)
+                    }
+            except Exception as query_error:
+                print(f"⚠️ Error en query de uso actual: {query_error}")
             
-            if response.data and len(response.data) > 0:
-                return {
-                    "messages": response.data[0].get('messages_used', 0),
-                    "tokens": response.data[0].get('tokens_used', 0)
-                }
             return {"messages": 0, "tokens": 0}
             
         except Exception as e:
@@ -193,15 +200,21 @@ class RateLimitService:
                 return True, None, None
                 
             today = datetime.utcnow().date()
-            response = supabase.table('model_usage_daily')\
-                .select('messages_used, tokens_used')\
-                .eq('user_id', user_id)\
-                .eq('model', model)\
-                .eq('date', today.isoformat())\
-                .execute()
             
-            messages_used = response.data[0]['messages_used'] if response.data and len(response.data) > 0 else 0
-            tokens_used = response.data[0]['tokens_used'] if response.data and len(response.data) > 0 else 0
+            try:
+                response = supabase.table('model_usage_daily')\
+                    .select('messages_used, tokens_used')\
+                    .eq('user_id', user_id)\
+                    .eq('model', model)\
+                    .eq('date', today.isoformat())\
+                    .execute()
+                
+                messages_used = response.data[0]['messages_used'] if response.data and len(response.data) > 0 else 0
+                tokens_used = response.data[0]['tokens_used'] if response.data and len(response.data) > 0 else 0
+            except Exception as db_error:
+                print(f"⚠️ Error obteniendo uso actual: {db_error}")
+                messages_used = 0
+                tokens_used = 0
             
             usage_info = {
                 "messages": {
@@ -240,32 +253,38 @@ class RateLimitService:
                     "message": f"Has alcanzado el límite diario de {tokens_daily_limit} tokens para {model}."
                 }, usage_info)
             
-            increment_response = await supabase.rpc('increment_daily_usage', {
-                'p_user_id': user_id,
-                'p_model': model,
-                'p_date': today.isoformat(),
-                'p_messages': 1,
-                'p_tokens': message_tokens
-            }).execute()
-            
-            if increment_response.data:
-                new_messages = increment_response.data.get('messages_used', messages_used + 1)
-                new_tokens = increment_response.data.get('tokens_used', tokens_used + message_tokens)
+            try:
+                # Increment daily usage - using synchronous execute() from Supabase client
+                increment_response = supabase.rpc('increment_daily_usage', {
+                    'p_user_id': user_id,
+                    'p_model': model,
+                    'p_date': today.isoformat(),
+                    'p_messages': 1,
+                    'p_tokens': message_tokens
+                }).execute()
                 
-                usage_info = {
-                    "messages": {
-                        "current": new_messages,
-                        "limit": messages_daily_limit,
-                        "unlimited": messages_daily_limit == -1
-                    },
-                    "tokens": {
-                        "current": new_tokens,
-                        "limit": tokens_daily_limit,
-                        "unlimited": tokens_daily_limit == -1,
-                        "per_message_limit": tokens_per_message_limit
-                    },
-                    "model": model
-                }
+                # Check if response has data attribute and is not None
+                if increment_response and hasattr(increment_response, 'data') and increment_response.data:
+                    new_messages = increment_response.data.get('messages_used', messages_used + 1)
+                    new_tokens = increment_response.data.get('tokens_used', tokens_used + message_tokens)
+                    
+                    usage_info = {
+                        "messages": {
+                            "current": new_messages,
+                            "limit": messages_daily_limit,
+                            "unlimited": messages_daily_limit == -1
+                        },
+                        "tokens": {
+                            "current": new_tokens,
+                            "limit": tokens_daily_limit,
+                            "unlimited": tokens_daily_limit == -1,
+                            "per_message_limit": tokens_per_message_limit
+                        },
+                        "model": model
+                    }
+            except Exception as increment_error:
+                print(f"⚠️ Error incrementando uso diario: {increment_error}")
+                # Continuar con los valores actuales si falla el incremento
             
             return (True, None, usage_info)
             
@@ -362,6 +381,109 @@ class RateLimitService:
         except Exception as e:
             SecurityLogger.log_api_error(
                 api_name="RateLimitService.cleanup_old_daily_records",
+                error_message=str(e),
+                correlation_id=SecurityLogger.generate_correlation_id()
+            )
+    
+    # Google AI Studio per-user daily quotas (to support 100+ concurrent users)
+    # These limits are enforced IN ADDITION to plan-based limits
+    GOOGLE_AI_QUOTAS = {
+        "Orzion Pro": 2,      # 2 req/user/day (200 total / 100 users)
+        "Orzion Turbo": 10,   # 10 req/user/day (1000 total / 100 users)
+        "Orzion Mini": 12,    # 12 req/user/day (1500 total / 100+ users)
+        "Image": 1            # 1 img/user/day (50 total / 50 users)
+    }
+    
+    @staticmethod
+    async def check_google_ai_quota(user_id: str, model: str) -> Tuple[bool, Optional[str]]:
+        """
+        Check if user has exceeded their Google AI Studio daily quota.
+        This is a separate quota from plan-based limits.
+        
+        Args:
+            user_id: User ID
+            model: Model name (Orzion Pro, Orzion Turbo, Orzion Mini, Image)
+        
+        Returns:
+            (allowed: bool, error_message: Optional[str])
+        """
+        try:
+            # Get Google AI quota for model
+            quota_limit = RateLimitService.GOOGLE_AI_QUOTAS.get(model, 0)
+            
+            if quota_limit == 0:
+                # No Google AI quota for this model
+                return True, None
+            
+            supabase = get_supabase_service()
+            if not supabase:
+                # If Supabase not available, allow request (fallback to OpenRouter)
+                return True, None
+            
+            today = datetime.utcnow().date()
+            
+            try:
+                # Check usage in google_ai_usage table
+                response = supabase.table('google_ai_usage')\
+                    .select('requests_used')\
+                    .eq('user_id', user_id)\
+                    .eq('model', model)\
+                    .eq('date', today.isoformat())\
+                    .execute()
+                
+                requests_used = response.data[0]['requests_used'] if response.data and len(response.data) > 0 else 0
+                
+                if requests_used >= quota_limit:
+                    time_until_reset = RateLimitService._get_time_until_reset()
+                    return (False, f"Has alcanzado el límite de Google AI Studio ({quota_limit} req/día) para {model}. Se restablecerá en {time_until_reset}.")
+                
+                return True, None
+                
+            except Exception as query_error:
+                print(f"⚠️ Error checking Google AI quota: {query_error}")
+                # On error, allow request (will fallback to OpenRouter if needed)
+                return True, None
+        
+        except Exception as e:
+            SecurityLogger.log_api_error(
+                api_name="RateLimitService.check_google_ai_quota",
+                error_message=str(e),
+                correlation_id=SecurityLogger.generate_correlation_id()
+            )
+            return True, None
+    
+    @staticmethod
+    async def increment_google_ai_usage(user_id: str, model: str):
+        """
+        Increment Google AI Studio usage counter for user-model-date.
+        
+        Args:
+            user_id: User ID
+            model: Model name
+        """
+        try:
+            supabase = get_supabase_service()
+            if not supabase:
+                return
+            
+            today = datetime.utcnow().date()
+            
+            try:
+                # Use RPC function to increment (upsert if not exists)
+                supabase.rpc('increment_google_ai_usage', {
+                    'p_user_id': user_id,
+                    'p_model': model,
+                    'p_date': today.isoformat()
+                }).execute()
+                
+                print(f"📊 Google AI usage incremented for {user_id[:8]}.../{model}")
+                
+            except Exception as increment_error:
+                print(f"⚠️ Error incrementing Google AI usage: {increment_error}")
+        
+        except Exception as e:
+            SecurityLogger.log_api_error(
+                api_name="RateLimitService.increment_google_ai_usage",
                 error_message=str(e),
                 correlation_id=SecurityLogger.generate_correlation_id()
             )

@@ -87,14 +87,14 @@ async def chat(
 
         # Build message list
         messages = []
-        
+
         # Inject memories at the beginning if available
         if memories_context:
             messages.append({
                 "role": "system",
                 "content": memories_context
             })
-        
+
         for msg in request.history:
             messages.append({"role": msg.role, "content": msg.content})
 
@@ -112,12 +112,13 @@ async def chat(
 
         messages.append(user_message)
 
-        # Get LLM response
+        # Get LLM response (pass user_id for caching)
         full_response = await LLMService.get_chat_completion(
             request.model,
             messages,
             search_context,
-            request.special_mode # Add special_mode here
+            request.special_mode,
+            user_id  # Pass user_id for cache
         )
 
         # Save to database if user is authenticated
@@ -205,27 +206,28 @@ async def chat_stream(
         if request.enable_search:
             search_context = await SearchService.search_web(prompt)
 
-        # Get user memories and inject into context (if authenticated)
+        # User memories DISABLED - only use conversation context
+        # Para evitar que el bot recuerde cosas de chats eliminados
         memories_context = None
-        if user_id:
-            try:
-                from services.memory_service import MemoryService
-                memories_context = await MemoryService.format_memories_for_prompt(user_id)
-                if memories_context:
-                    print(f"🧠 Injecting {len(memories_context)} chars of user memories into stream")
-            except Exception as e:
-                print(f"⚠️ Error getting memories (non-critical): {e}")
+        # if user:
+        #     try:
+        #         from services.memory_service import MemoryService
+        #         memories_context = await MemoryService.format_memories_for_prompt(user['id'])
+        #         if memories_context:
+        #             print(f"🧠 Injecting user memories into context")
+        #     except Exception as e:
+        #         print(f"⚠️ Error loading memories: {e}")
 
         # Build message list
         messages = []
-        
+
         # Inject memories at the beginning if available
         if memories_context:
             messages.append({
                 "role": "system",
                 "content": memories_context
             })
-        
+
         for msg in request.history:
             messages.append({"role": msg.role, "content": msg.content})
 
@@ -252,7 +254,8 @@ async def chat_stream(
                     request.model,
                     messages,
                     search_context,
-                    request.special_mode # Add special_mode here
+                    request.special_mode,
+                    user_id  # Pass user_id for cache
                 ):
                     full_response += chunk
                     yield f"data: {json.dumps({'chunk': chunk})}\n\n"
