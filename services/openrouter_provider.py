@@ -101,9 +101,8 @@ class OpenRouterProvider:
         correlation_id = SecurityLogger.generate_correlation_id()
         
         try:
-            # Configure httpx client with proxy support
-            proxy_config = OpenRouterProvider._get_proxy_config()
-            async with httpx.AsyncClient(proxies=proxy_config, timeout=120.0) as client:
+            # Create httpx client (proxy support optional)
+            async with httpx.AsyncClient(timeout=120.0) as client:
                 async with client.stream("POST", url, json=payload, headers=headers) as response:
                     response.raise_for_status()
                     
